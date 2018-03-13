@@ -54,12 +54,14 @@ def pageOne(error_msg)
 						{set_default=it}
 					}
 				if (set_default)
-					{input "monitor_routine", "enum", title: "Select a routine to monitor for execution", options: actions, submitOnChange: true, defaultValue: set_default}
+					{input "monitor_routine", "enum", title: "Select a routine to monitor for execution", options: actions, submitOnChange: true, defaultValue: set_default, required: false}
 				else
-					{input "monitor_routine", "enum", title: "Select a routine to monitor for execution", options: actions, submitOnChange: true}
-  				}
-  			}	
-		section 
+					{input "monitor_routine", "enum", title: "Select a routine to monitor for execution", options: actions, submitOnChange: true, required: false}
+				}
+			input "theButton", "capability.button", title: "Select a button to monitor", multiple: false, hideWhenEmpty: true, submitOnChange: true, required: false
+			input "theMomentary", "capability.momentary", title: "Select a momentary switch to monitor", multiple: false, hideWhenEmpty: true, submitOnChange: true, required: false
+			}
+		section
 			{
 			input "theexitdelay", "number", required: true, range: "10..120", defaultValue: 30,
 				title: "How many seconds to wait when monitored routine executes from 10 to 120"
@@ -106,19 +108,30 @@ def pageOne(error_msg)
 
 
 def installed() {
-    log.debug "Installed with settings: ${settings}"
-    initialize()
+	log.debug "Installed with settings: ${settings}"
+	initialize()
 }
 
 def updated() {
-    log.debug "Updated with settings: ${settings}"
-    unsubscribe()
-    initialize()
+	log.debug "Updated with settings: ${settings}"
+	initialize()
 }
 
-def initialize() 
+def initialize()
 	{
-	subscribe(location, "routineExecuted", routineHandler)
+	unsubscribe()
+	if (monitor_routine)
+		{
+		subscribe(location, "routineExecuted", routineHandler)
+		}
+	if (theButton)
+		{
+		subscribe(theButton, "button.pressed", buttonHandler)
+		}
+	if (theMomentary)
+		{
+		subscribe(theMomentary, "momentary", momentaryHandler)
+		}
 	}
 
 
@@ -141,20 +154,44 @@ def routineHandler(evt)
 //	log.debug "evt descriptionText: ${evt.descriptionText}"
 	if (evt.name == "routineExecuted" && evt.displayName == monitor_routine)
 		{
-		log.debug "triggering a delay routine execute"
-		def now = new Date()
-		def runTime = new Date(now.getTime() + (theexitdelay * 1000))
-		runOnce(runTime, executeRoutine) 
-		if (theTTS)
-			{
-			theTTS.speak("@|ALARM=CHIME")
-			theTTS.speak(theMsg,[delay: 1800])
-			theTTS.speak("@|ALARM=CHIME", [delay: 8000])
-			}
-		if (theSpeakers)
-			{
-			theSpeakers.playTextAndResume(theMsg,theVolume)
-			}
+		beginDelay()
+		}
+	}
+
+def buttonHandler(evt)
+	{
+	log.debug "buttonHandler event: ${evt}"
+	beginDelay()
+	}
+
+def momentaryHandler(evt)
+	{
+	log.debug "momentaryHandler event: ${evt}"
+	log.debug "event name: ${evt.name}"
+	log.debug "event value: ${evt.value}"
+	log.debug "event description: ${evt.description}"
+	log.debug "event data: ${evt.data}"
+	if (evt.value == "pushed")
+		{
+		beginDelay()
+		}
+	}
+
+def beginDelay()
+	{
+	log.debug "triggering a delay routine execute"
+	def now = new Date()
+	def runTime = new Date(now.getTime() + (theexitdelay * 1000))
+	runOnce(runTime, executeRoutine)
+	if (theTTS)
+		{
+		theTTS.speak("@|ALARM=CHIME")
+		theTTS.speak(theMsg,[delay: 1800])
+		theTTS.speak("@|ALARM=CHIME", [delay: 8000])
+		}
+	if (theSpeakers)
+		{
+		theSpeakers.playTextAndResume(theMsg,theVolume)
 		}
 	}
 
