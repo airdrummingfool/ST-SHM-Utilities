@@ -1,8 +1,8 @@
 /*
- *  SHM Delay TrueDelay 
+ *  SHM Delay TrueDelay
  *  Functions: Create a true delay for SHM by executing a dummy routine that does nothing,
  			then a real routine in nn seconds
- * 
+ *
  *  Copyright 2017 Arn Burkhoff
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -14,7 +14,7 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
- * 	Dec 17, 2017    v1.0.0	Add optional speech at exit delay using code from Keypad_ExitDelay_Talker, 
+ * 	Dec 17, 2017    v1.0.0	Add optional speech at exit delay using code from Keypad_ExitDelay_Talker,
  *
  * 	Sep 14, 2017    v0.0.1	Add some logic to make it "smarter", selecting routine defaults when possible,
  * 					and removing monitored routine from execution routines list, execution unchanged
@@ -43,9 +43,9 @@ def pageOne(error_msg)
 		{
 		section
 			{
- 			def actions = location.helloHome?.getPhrases()*.label
+			def actions = location.helloHome?.getPhrases()*.label
 			def set_default=false
-			if (actions) 
+			if (actions)
 				{
 				actions.sort()
 				actions.each
@@ -61,50 +61,53 @@ def pageOne(error_msg)
 			input "theButton", "capability.button", title: "Select a button to monitor", multiple: false, hideWhenEmpty: true, submitOnChange: true, required: false
 			input "theMomentary", "capability.momentary", title: "Select a momentary switch to monitor", multiple: false, hideWhenEmpty: true, submitOnChange: true, required: false
 			}
-		section
+		def hasSelection = monitor_routine || theButton || theMomentary
+		if (hasSelection)
 			{
-			input "theexitdelay", "number", required: true, range: "10..120", defaultValue: 30,
-				title: "How many seconds to wait when monitored routine executes from 10 to 120"
-			}
-		section
-			{
- 			def actions = location.helloHome?.getPhrases()*.label
-			if (actions) 
+			section
 				{
-				def set_default2=false
-				actions.sort()
-//				log.debug "actions ${actions}"
-				def new_actions=[]
-				actions.each		//fails when not defined as multiple contacts
+				input "theexitdelay", "number", required: true, range: "10..120", defaultValue: 30,
+					title: "How many seconds to wait when monitored routine executes from 10 to 120"
+				}
+			section
+				{
+				def actions = location.helloHome?.getPhrases()*.label
+				if (actions)
 					{
-//					log.debug "${it.value} ${it} ${monitor_routine}"
-					if (it != monitor_routine)	//if monitor_routine not defined it is set to null for compare
+					def set_default2=false
+					actions.sort()
+//				log.debug "actions ${actions}"
+					def new_actions=[]
+					actions.each		//fails when not defined as multiple contacts
 						{
-						new_actions+=it
-						if (it=="Goodbye!")
-							{set_default2=true}
+//					log.debug "${it.value} ${it} ${monitor_routine}"
+						if (it != monitor_routine)	//if monitor_routine not defined it is set to null for compare
+							{
+							new_actions+=it
+							if (it=="Goodbye!")
+								{set_default2=true}
+							}
 						}
+//				log.debug "default is ${set_default2}"
+					if (set_default2)
+						{input "execute_routine", "enum", title: "Then execute this routine", options: new_actions, defaultValue: "Goodbye!"}
+					else
+						{input "execute_routine", "enum", title: "Then execute this routine", options: new_actions}
 					}
-//				log.debug "default is ${set_default2}"	
-				if (set_default2)
-					{input "execute_routine", "enum", title: "Then execute this routine", options: new_actions, defaultValue: "Goodbye!"}
-				else
-					{input "execute_routine", "enum", title: "Then execute this routine", options: new_actions}
-				}	
-  			}	
-	    section("Optional Speech Settings") {
-			input "theMsg", "string", required: true, title: "The message", 
-				defaultValue: "Smart Home Monitor is arming in 30 seconds. Please exit the facility"
-			input "theTTS", "capability.speechSynthesis", required: false, multiple: true,
-				title: "LanNouncer/DLNA TTS Devices"
-			input "theSpeakers", "capability.audioNotification", required: false, multiple: true,
-				title: "Speaker Devices?"
-			input "theVolume", "number", required: true, range: "1..100", defaultValue: 40,
-				title: "Speaker Volume Level from 1 to 100"
-			}	
-
+				}
+			section("Optional Speech Settings") {
+				input "theMsg", "string", required: true, title: "The message",
+					defaultValue: "Smart Home Monitor is arming in 30 seconds. Please exit the facility"
+				input "theTTS", "capability.speechSynthesis", required: false, multiple: true,
+					title: "LanNouncer/DLNA TTS Devices"
+				input "theSpeakers", "capability.audioNotification", required: false, multiple: true,
+					title: "Speaker Devices?"
+				input "theVolume", "number", required: true, range: "1..100", defaultValue: 40,
+					title: "Speaker Volume Level from 1 to 100"
+				}
+			}
 		}
-	}	
+	}
 
 
 def installed() {
@@ -160,17 +163,13 @@ def routineHandler(evt)
 
 def buttonHandler(evt)
 	{
-	log.debug "buttonHandler event: ${evt}"
+	// log.debug "buttonHandler event: ${evt.value}"
 	beginDelay()
 	}
 
 def momentaryHandler(evt)
 	{
-	log.debug "momentaryHandler event: ${evt}"
-	log.debug "event name: ${evt.name}"
-	log.debug "event value: ${evt.value}"
-	log.debug "event description: ${evt.description}"
-	log.debug "event data: ${evt.data}"
+	// log.debug "momentaryHandler event: ${evt.value}"
 	if (evt.value == "pushed")
 		{
 		beginDelay()
